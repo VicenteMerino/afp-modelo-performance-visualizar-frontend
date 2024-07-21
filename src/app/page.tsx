@@ -22,20 +22,15 @@ async function getData() {
     next: {
       revalidate: 3600,
     },
-    cache: 'no-cache',
   })).json();
 
   const shareData : Share = (await (await fetch(`${NEXT_PUBLIC_API_URL}/shares?latest=true`, {
     next: {
-      revalidate: 3600,
+      revalidate: 60,
     },
   })).json())[0];
 
   const totalInvested = movementsData
-    .filter(item => item.is_employer_payment)
-    .reduce((acc, item) => acc + item.clp_amount, 0);
-
-  const totalInvestedCurrentValue = movementsData
     .filter(item => item.is_employer_payment)
     .reduce((acc, item) => acc + item.shares_amount, 0) * shareData.share_value;
 
@@ -45,11 +40,10 @@ async function getData() {
   const totalVariation = totalBalance - totalInvested;
 
   const totalShares = movementsData
-    .reduce((acc, item) => acc + item.shares_amount, 0);
+    .reduce((acc, item) => acc + (item.fundsflow === 'CREDIT' ? item.shares_amount : -item.shares_amount), 0);
 
   return {
     totalInvested,
-    totalInvestedCurrentValue,
     totalBalance,
     totalVariation,
     totalShares,
@@ -63,7 +57,7 @@ function formatCurrency(value: number) {
 }
 
 export default async function Home() {
-  const { totalInvested, totalInvestedCurrentValue, totalBalance, totalVariation, totalShares, movementsData, shareData } = await getData();
+  const { totalInvested, totalBalance, totalVariation, totalShares, movementsData, shareData } = await getData();
 
   return (
     <div>
@@ -75,7 +69,6 @@ export default async function Home() {
       <div>
         <h2>Totals</h2>
         <p>Total Invested: {formatCurrency(totalInvested)}</p>
-        <p>Total Invested Value: {formatCurrency(totalInvestedCurrentValue)}</p>
         <p>Total Variation: {formatCurrency(totalVariation)}</p>
         <p>Total Balance: {formatCurrency(totalBalance)}</p>
         <p>Total Shares: {totalShares.toFixed(2)}</p>
